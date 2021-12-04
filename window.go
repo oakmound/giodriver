@@ -6,6 +6,7 @@ import (
 	"image/color"
 	"image/draw"
 
+	"gioui.org/app"
 	"gioui.org/io/key"
 	"gioui.org/io/pointer"
 	"gioui.org/io/system"
@@ -19,6 +20,13 @@ import (
 
 	mobilekey "golang.org/x/mobile/event/key"
 )
+
+type Window struct {
+	screen    *Screen
+	gioWindow *app.Window
+	toUpload  *image.RGBA
+	*Deque
+}
 
 func (w *Window) Release()                                                                      {}
 func (w *Window) Draw(src2dst f64.Aff3, src screen.Texture, sr image.Rectangle, op draw.Op)     {}
@@ -74,9 +82,12 @@ func (w *Window) handleEvents() {
 			case "S":
 				r = 'S'
 				code = mobilekey.CodeS
+			case "K":
+				r = 'K'
+				code = mobilekey.CodeK
 			case "D":
 				r = 'D'
-				code = mobilekey.CodeD 
+				code = mobilekey.CodeD
 			default:
 				fmt.Println("unknown key", e.Name)
 			}
@@ -87,6 +98,8 @@ func (w *Window) handleEvents() {
 			})
 		case system.DestroyEvent:
 			w.gioWindow.Close()
+			// TODO: multi window
+			w.screen.lastWindowDestroyed <- struct{}{}
 			return
 		case system.FrameEvent:
 			gtx := layout.NewContext(&ops, e)

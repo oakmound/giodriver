@@ -19,7 +19,8 @@ var screenLock sync.Mutex
 var screens []*Screen
 
 type Screen struct {
-	internalIndex int
+	internalIndex       int
+	lastWindowDestroyed chan (struct{})
 }
 
 func (s *Screen) NewImage(size image.Point) (screen.Image, error) {
@@ -35,13 +36,6 @@ func (s *Screen) NewTexture(size image.Point) (screen.Texture, error) {
 		screen: s,
 		size:   size,
 	}, nil
-}
-
-type Window struct {
-	screen    *Screen
-	gioWindow *app.Window
-	toUpload  *image.RGBA
-	*Deque
 }
 
 func (s *Screen) NewWindow(opts screen.WindowGenerator) (screen.Window, error) {
@@ -77,9 +71,15 @@ func (s *Screen) NewWindow(opts screen.WindowGenerator) (screen.Window, error) {
 
 func Driver(f func(screen.Screen)) {
 	screenLock.Lock()
-	screen := &Screen{}
+	screen := &Screen{
+		lastWindowDestroyed: make(chan struct{}),
+	}
 	screens = append(screens, screen)
 	screen.internalIndex = len(screens) - 1
 	screenLock.Unlock()
-	f(screen)
+	go f(screen)
+	<-screen.lastWindowDestroyed
+	screenLock.Lock()
+	screens[screen.internalIndex] = nil
+	screenLock.Unlock()
 }
